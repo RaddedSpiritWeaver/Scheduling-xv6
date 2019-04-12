@@ -6,3 +6,13 @@ the only thing I did for the project was before the holidays and I struggled to 
 loged my work in google keep
 
 %%todo: move the log on google keep to here.
+
+^ git ^
+seems we got the basics working
+1. use git config --global user.email <email> and user.name <name> to set up my stuff
+2. use git commit -m <massage>
+3. use git log to view basics of logs ... my stuff are after the origin thing with red
+4. use git add to add files and git status to check if everything is cool
+>>> use cheat sheets and shit to learn more
+
+
