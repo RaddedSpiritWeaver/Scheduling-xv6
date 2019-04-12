@@ -16,3 +16,18 @@ seems we got the basics working
 >>> use cheat sheets and shit to learn more
 
 
+***** Q1 *****
+about the PCB
+the struct proc in file ^^^^ proc.h ^^^^
+it has all the stuff we need
+all the answers for qestion 1 are obvious
+
+
+????? Questions of the Day ?????
+
+1. how to enter directories
+2. what are page tables
+3. how should i add a system call
+4. should i create a program and use fork and stuff in it so that it splits into multiple processes ?
+// check out more on keep 
+
