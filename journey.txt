@@ -1,4 +1,5 @@
---- April 13th ---
+				--- April 13th ---
+
 restarting the project
 gonna start with git and try to commit something
 
@@ -29,5 +30,36 @@ all the answers for qestion 1 are obvious
 2. what are page tables
 3. how should i add a system call
 4. should i create a program and use fork and stuff in it so that it splits into multiple processes ?
-// check out more on keep 
+// check out more on keep
+
+				--- April 13th ---
+
+. first of all we have to make qemu after each change in the code maybe there is some thing else but i have no idea atm
+
+????? Questions of the Day ?????
+
+sysfile.c --> seems to contain the code for system calls but mappings were on other files and header files as i was browsing the ssytem files
+
+string.c --> has some memory management stuff available in it
+
+
+mp.c --> also has somethings about sharing memory and stuff
+
+1. can i hot load file changes? (guess its a no since the system is already running)
+2. how is qemu actually made? why do i get my complie error when i load it? are the files and headers i need in qemu floder or in xv6 ? the c libraries i need to do my work? what is the actual struct ?
+
+
+				--- April 16th ---
+
+simply followed some links to add the system call. the links are down below
+1. https://stackoverflow.com/questions/8021774/how-do-i-add-a-system-call-utility-in-xv6
+2. https://gitlab.cardina1.red/lo48576/titech-1610-os/commit/7ac0d7fc7df69682a7e7b546cd0d6c4540663487?view=parallel#019771c5f37c514650dcc727cdd0238da84f12cd
+
+
+
+
+
+
+
+
 

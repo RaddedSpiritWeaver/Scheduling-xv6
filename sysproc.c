@@ -89,3 +89,15 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+//----- my additions -----
+
+
+// implementation of get parent pid
+// since in sys_getpid(), pid a filed of the proccess is accessed like: proc->pid
+// like wise we can access a processes parent (since parent is a field of proc in proc.h
+int
+sys_getppid(void)
+{
+	return myproc()->parent->pid;
+}
