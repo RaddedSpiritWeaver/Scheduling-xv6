@@ -51,6 +51,9 @@ trap(struct trapframe *tf)
     if(cpuid() == 0){
       acquire(&tickslock);
       ticks++;
+      //
+      // myproc()->rtime++; // !- DANGER : there is a must be called with interupts disabled thing and i have no idea how is that
+      //
       wakeup(&ticks);
       release(&tickslock);
     }

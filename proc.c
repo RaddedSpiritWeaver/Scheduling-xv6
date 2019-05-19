@@ -88,6 +88,10 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  // my code to init the new vaeiables in proc
+  p->ctime = ticks;
+  p->rtime = 0;
+  // <end>
 
   release(&ptable.lock);
 
@@ -342,7 +346,9 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-
+      // ... my code ...
+      cprintf("process %s with pid %d is now running\n", p->name, p->pid);
+      // ... ... ...
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
