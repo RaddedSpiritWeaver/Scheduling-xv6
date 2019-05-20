@@ -254,6 +254,7 @@ exit(void)
 
   // guess this is where a proc ends !- note the zombie state and stuff
   // my code 
+  cprintf("closing a process and setting its end time. proc name: %s \n", curproc->name);
   curproc->etime = ticks;
   // <end>
 
