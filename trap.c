@@ -46,13 +46,22 @@ trap(struct trapframe *tf)
     return;
   }
 
+  /*
+        failed experiment 
+        todo: still might be a way
+        
+        myproc()->rtime++; // !- DANGER : there is a must be called with interupts disabled thing and i have no idea how is that
+
+        after ticks ++ in the following function
+  */
+
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){
       acquire(&tickslock);
       ticks++;
       //
-      // myproc()->rtime++; // !- DANGER : there is a must be called with interupts disabled thing and i have no idea how is that
+      updateProcessStatistics();
       //
       wakeup(&ticks);
       release(&tickslock);

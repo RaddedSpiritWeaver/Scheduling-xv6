@@ -60,3 +60,6 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+
+// just the definition
+void updateProcessStatistics();

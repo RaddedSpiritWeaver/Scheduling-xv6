@@ -538,3 +538,22 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+
+// code to update process statistics with each tick of the cpu
+// also defined in proc.h to let others use it but the implementation is here :)
+void updateProcessStatistics() {
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    switch(p->state) {
+      // add more cases if needed for other prcess states
+      case RUNNING:
+        p->rtime++;
+        break;
+      default:
+        ;
+    }
+  }
+  release(&ptable.lock);
+}
