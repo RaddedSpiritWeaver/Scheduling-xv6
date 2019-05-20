@@ -24,4 +24,5 @@
 // ----- my additions ----- 
 
 #define SYS_getppid 22
+#define SYS_cps     23
 

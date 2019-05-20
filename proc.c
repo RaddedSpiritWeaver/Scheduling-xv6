@@ -88,6 +88,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+
   // my code to init the new vaeiables in proc
   p->ctime = ticks;
   p->rtime = 0;
@@ -251,6 +252,11 @@ exit(void)
   end_op();
   curproc->cwd = 0;
 
+  // guess this is where a proc ends !- note the zombie state and stuff
+  // my code 
+  curproc->etime = ticks;
+  // <end>
+
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
@@ -346,9 +352,11 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+
       // ... my code ...
-      cprintf("process %s with pid %d is now running\n", p->name, p->pid);
+      // cprintf("process %s with pid %d is now running\n", p->name, p->pid);
       // ... ... ...
+      
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
@@ -556,4 +564,27 @@ void updateProcessStatistics() {
     }
   }
   release(&ptable.lock);
+}
+
+//current process status
+int cps()
+{
+  struct proc *p;
+  
+  // Enable interrupts on this processor.
+  sti();
+
+  // Loop over process table looking for process with pid.
+  acquire(&ptable.lock);
+  cprintf("name \t pid \t state \t\t ctime \t rtime \t etime \n");
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if ( p->state == SLEEPING )
+        cprintf("%s \t %d  \t SLEEPING \t %d \t %d \t %d \n", p->name, p->pid, p->ctime, p->rtime, p->etime );
+      else if ( p->state == RUNNING )
+        cprintf("%s \t %d  \t RUNNING  \t %d \t %d \t %d \n", p->name, p->pid, p->ctime, p->rtime, p->etime );
+  }
+  
+  release(&ptable.lock);
+  
+  return 23; // !- maybe 22 should be 23 since this is the 23rd system call
 }

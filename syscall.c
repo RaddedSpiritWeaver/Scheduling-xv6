@@ -105,6 +105,7 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 
 extern int sys_getppid(void); // my addition
+extern int sys_cps(void); // addition for prj2
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -129,6 +130,7 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_getppid] sys_getppid, // my addition
+[SYS_cps]     sys_cps, // my addition for prj 2
 };
 
 void

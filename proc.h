@@ -61,5 +61,5 @@ struct proc {
 //   fixed-size stack
 //   expandable heap
 
-// just the definition
+// just the definition -- maybe could be moved to defs.h
 void updateProcessStatistics();

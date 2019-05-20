@@ -101,3 +101,8 @@ sys_getppid(void)
 {
 	return myproc()->parent->pid;
 }
+
+int sys_cps(void)
+{
+  return cps();
+}

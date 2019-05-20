@@ -26,6 +26,7 @@ int uptime(void);
 // ------- my additions -------
 
 int getppid(void);
+int cps(void);
 
 // -------
 
