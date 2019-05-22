@@ -254,8 +254,8 @@ exit(void)
 
   // guess this is where a proc ends !- note the zombie state and stuff
   // my code 
-  cprintf("closing a process and setting its end time. proc name: %s \n", curproc->name);
   curproc->etime = ticks;
+  cprintf("closing a process and setting its end time. proc name: %s, etime: %d \n", curproc->name, curproc->etime);
   // <end>
 
   acquire(&ptable.lock);
@@ -306,6 +306,11 @@ wait(void)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+        // this function clears the page table
+        // this should have been the reason for ps showing the last end time :)
+        p->etime = 0;
+        p->rtime = 0;
+        p->ctime = 0;
         release(&ptable.lock);
         return pid;
       }
@@ -355,7 +360,7 @@ scheduler(void)
       p->state = RUNNING;
 
       // ... my code ...
-      // cprintf("process %s with pid %d is now running\n", p->name, p->pid);
+      // cprintf("process %s with pid %d is now running, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
       // ... ... ...
       
       swtch(&(c->scheduler), p->context);
@@ -578,11 +583,15 @@ int cps()
   // Loop over process table looking for process with pid.
   acquire(&ptable.lock);
   cprintf("name \t pid \t state \t\t ctime \t rtime \t etime \n");
+  // for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+  //     if ( p->state == SLEEPING )
+  //       cprintf("%s \t %d  \t SLEEPING \t %d \t %d \t %d \n", p->name, p->pid, p->ctime, p->rtime, p->etime );
+  //     else if ( p->state == RUNNING )
+  //       cprintf("%s \t %d  \t RUNNING  \t %d \t %d \t %d \n", p->name, p->pid, p->ctime, p->rtime, p->etime );
+  // }
+  
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if ( p->state == SLEEPING )
-        cprintf("%s \t %d  \t SLEEPING \t %d \t %d \t %d \n", p->name, p->pid, p->ctime, p->rtime, p->etime );
-      else if ( p->state == RUNNING )
-        cprintf("%s \t %d  \t RUNNING  \t %d \t %d \t %d \n", p->name, p->pid, p->ctime, p->rtime, p->etime );
+    cprintf("%s \t %d  \t %s \t %d \t %d \t %d \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime );
   }
   
   release(&ptable.lock);
