@@ -105,6 +105,7 @@ found:
   // my code to init the new vaeiables in proc
   p->ctime = ticks;
   p->rtime = 0;
+  p->sched_tick_c = 0;
   // <end>
 
   release(&ptable.lock);
@@ -430,6 +431,11 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
+  // added feature
+  // cprintf("proc with name: %s yeilded, with rtime of:%d\t tickcounter: %d\n", myproc()->name, myproc()->rtime, myproc()->sched_tick_c);
+  // seems that couldnt have used runtime for yeilding
+  myproc()->sched_tick_c = 0; // when ever a proc drops its self reset its counter
+  // <end>
   sched();
   release(&ptable.lock);
 }
@@ -667,4 +673,13 @@ int cps(int options)
   release(&ptable.lock);
   
   return 23; // !- maybe 22 should be 23 since this is the 23rd system call
+}
+
+int increment_sched_tickcounter()
+{
+  int returnMe;
+  acquire(&ptable.lock); // crititcal section to use the process table
+  returnMe = ++myproc()->sched_tick_c;
+  release(&ptable.lock);
+  return returnMe;
 }

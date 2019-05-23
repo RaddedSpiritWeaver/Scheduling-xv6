@@ -59,7 +59,8 @@ struct proc {
   // my additions
   int ctime;                   // the creation time of the process
   int rtime;                   // the run time of the process
-  int etime;                   // end time of the process 
+  int etime;                   // end time of the process
+  int sched_tick_c;            // to handle timesliceing :) -> turns 0 when yeilding ?? guess i could have even used runtime with a mod
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -70,3 +71,4 @@ struct proc {
 
 // just the definition -- maybe could be moved to defs.h
 void updateProcessStatistics();
+int increment_sched_tickcounter();

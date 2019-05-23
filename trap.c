@@ -111,13 +111,22 @@ trap(struct trapframe *tf)
   // until it gets to the regular system call return.)
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
     exit();
+  
+  
+  #ifdef RR // defalut
 
-  // Force process to give up CPU on clock tick.
-  // If interrupts were on while locks held, would need to check nlock.
-  if(myproc() && myproc()->state == RUNNING &&
-     tf->trapno == T_IRQ0+IRQ_TIMER)
-    yield();
+    // Force process to give up CPU on clock tick.
+    // If interrupts were on while locks held, would need to check nlock.
+    // before  increment_sched_tickcounter() == QUANTA
+    // this code would have triggered every clock of there was a process running in the cpu now it first
+    // increments the counter then when its reached quanta it will trigger and yield 
+    // thus reseting the tick counter for its self
+    // guess its safe to augment yield since this was the only inctace it was used and no where else withing the code
+    if(myproc() && myproc()->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER && increment_sched_tickcounter() == QUANTA)
+      yield();
 
+  #endif // end if for RR
+  
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
     exit();
