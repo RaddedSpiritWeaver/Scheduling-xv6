@@ -20,6 +20,19 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+// added structure to create a log of processes that have been completed
+struct procLog
+{
+  int pid;
+  char name[16];
+  int ctime;
+  int rtime;
+  int etime;
+};
+
+// array to create a log of the last 64 processes completed - based of their pid
+struct procLog log[NPROC];
+
 void
 pinit(void)
 {
@@ -234,6 +247,7 @@ exit(void)
 {
   struct proc *curproc = myproc();
   struct proc *p;
+  struct procLog l;
   int fd;
 
   if(curproc == initproc)
@@ -256,6 +270,15 @@ exit(void)
   // my code 
   curproc->etime = ticks;
   cprintf("closing a process and setting its end time. proc name: %s, etime: %d \n", curproc->name, curproc->etime);
+  // make a log of this program that has finished its work
+  l.pid = curproc->pid;
+  int c_count;
+  for(c_count = 0; c_count < 16; c_count++) // simplest way to copy a string as a char array
+    l.name[c_count] = curproc->name[c_count];
+  l.rtime = curproc->rtime;
+  l.etime = curproc->etime;
+  l.ctime = curproc->ctime;
+  log[curproc->pid] = l;
   // <end>
 
   acquire(&ptable.lock);
@@ -573,25 +596,72 @@ void updateProcessStatistics() {
 }
 
 //current process status
-int cps()
+int cps(int options)
 {
   struct proc *p;
+
+  // int o = argint(0, &options);
+  int o = options;
+
+  int sleeping = o % 10;
+  int running = (o % 100) / 10;
+  int runable = (o % 1000) / 100;
+  int all = (o % 10000) / 1000;
+  int history = (o % 100000) / 10000;
+  int help = o / 100000;
+
+  cprintf("inside CPS\n");
+  
+  // for(int i = 0; i < 6; i++)
+  // {
+  //   cprintf("%d \t", options[i]);
+  // }
+
+  cprintf("%d", o);
+
+  cprintf("\n");
   
   // Enable interrupts on this processor.
   sti();
 
   // Loop over process table looking for process with pid.
   acquire(&ptable.lock);
-  cprintf("name \t pid \t state \t\t ctime \t rtime \t etime \n");
-  // for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-  //     if ( p->state == SLEEPING )
-  //       cprintf("%s \t %d  \t SLEEPING \t %d \t %d \t %d \n", p->name, p->pid, p->ctime, p->rtime, p->etime );
-  //     else if ( p->state == RUNNING )
-  //       cprintf("%s \t %d  \t RUNNING  \t %d \t %d \t %d \n", p->name, p->pid, p->ctime, p->rtime, p->etime );
-  // }
+
+  if(sleeping || running || runable)
+  {
+    cprintf("name \t pid \t state \t\t ctime \t rtime \t etime \n");
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      if ( p->state == SLEEPING && sleeping == 1 )
+        cprintf("%s \t %d  \t %s \t %d \t %d \t %d \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime );
+      if ( p->state == RUNNING && running == 1 )
+        cprintf("%s \t %d  \t %s \t %d \t %d \t %d \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime );
+      if ( p->state == RUNNABLE && runable == 1 )
+        cprintf("%s \t %d  \t %s \t %d \t %d \t %d \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime );
+    }
+  }
+    
+  if(all == 1)
+  {
+    cprintf("name \t pid \t state \t\t ctime \t rtime \t etime \n");
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      cprintf("%s \t %d  \t %s \t %d \t %d \t %d \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime );
+    }
+  }
   
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    cprintf("%s \t %d  \t %s \t %d \t %d \t %d \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime );
+  if(history == 1)
+  {
+    for(int i = 0; i < (nextpid % NPROC); i++)
+    {
+      struct procLog l = log[i];
+      cprintf("%s \t %d \t %d \t %d \t %d \n", l.name, l.pid, l.ctime, l.rtime, l.etime );
+    }
+  }
+
+  if(help == 1)
+  {
+    cprintf(" -s for sleeping\n -r for running\n -run for runnable\n -a for all states (defalut option)\n -h history\n --help for help\n");
   }
   
   release(&ptable.lock);

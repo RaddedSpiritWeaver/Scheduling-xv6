@@ -102,7 +102,11 @@ sys_getppid(void)
 	return myproc()->parent->pid;
 }
 
-int sys_cps(void)
+int sys_cps(int s)
 {
-  return cps();
+  // return cps(s, r, run, a, h, help);
+  cprintf("this is the damned sysproc and argument is: %d\n", s);
+  // cprintf("this is the damned sysproc and argument with the is is: %d\n", argint(0, &s));
+  argint(0, &s);
+  return cps(s);
 }
