@@ -191,6 +191,7 @@ UPROGS=\
 	_zombie\
 	_erfan\
 	_ps\
+	_sanity\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

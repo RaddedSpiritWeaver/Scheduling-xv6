@@ -33,6 +33,11 @@ struct procLog
 // array to create a log of the last 64 processes completed - based of their pid
 struct procLog log[NPROC];
 
+#ifdef FRR
+int last_proc_id;
+int last_proc_ctime;
+#endif
+
 void
 pinit(void)
 {
@@ -270,7 +275,7 @@ exit(void)
   // guess this is where a proc ends !- note the zombie state and stuff
   // my code 
   curproc->etime = ticks;
-  cprintf("closing a process and setting its end time. proc name: %s, etime: %d \n", curproc->name, curproc->etime);
+  cprintf("closing a process and setting its end time. proc name: %s, proc id: %d, etime: %d \n", curproc->name, curproc->pid, curproc->etime);
   // make a log of this program that has finished its work
   l.pid = curproc->pid;
   int c_count;
@@ -371,29 +376,67 @@ scheduler(void)
     sti();
 
     // Loop over process table looking for process to run.
+    // common to all polices
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+    #ifdef RR
+    // the defalut of XV6 just and augmented yield
 
-      // ... my code ...
-      // cprintf("process %s with pid %d is now running, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
-      // ... ... ...
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      {
+        if(p->state != RUNNABLE)
+          continue;
+
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+
+        // ... my code ...
+        // cprintf("process %s with pid %d is now running, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
+        // ... ... ...
+        
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+
+    #else // else for RR
       
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+      #ifdef FRR
+      // check for the first runnable process with ctime less than the one that has just yielded
+      // if not found go for the same proc
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      {
+        if(p->state != RUNNABLE) // skip those who are not runnable
+          continue;
+        
+        // case finding a runnable process
+        // find a process with smaller ctime than the one that has just yielded
+        if(p->ctime < last_proc_ctime)
+        {
+          c->proc = p;
+          switchuvm(p);
+          p->state = RUNNING;
+          swtch(&(c->scheduler), p->context);
+          switchkvm();
+          c->proc = 0;
+        }
+      }
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
-    }
+      #else // else for FRR
+
+      #endif // end of FRR
+
+    #endif // end of RR 
+
+    // always release the lock
+    // common to all policies
     release(&ptable.lock);
 
   }
@@ -435,6 +478,11 @@ yield(void)
   // cprintf("proc with name: %s yeilded, with rtime of:%d\t tickcounter: %d\n", myproc()->name, myproc()->rtime, myproc()->sched_tick_c);
   // seems that couldnt have used runtime for yeilding
   myproc()->sched_tick_c = 0; // when ever a proc drops its self reset its counter
+
+  #ifdef FRR
+  last_proc_id = myproc()->id;
+  last_proc_ctime = myproc()->ctime;
+  #endif
   // <end>
   sched();
   release(&ptable.lock);

@@ -117,6 +117,7 @@ trap(struct trapframe *tf)
 
     // Force process to give up CPU on clock tick.
     // If interrupts were on while locks held, would need to check nlock.
+    
     // before  increment_sched_tickcounter() == QUANTA
     // this code would have triggered every clock of there was a process running in the cpu now it first
     // increments the counter then when its reached quanta it will trigger and yield 
