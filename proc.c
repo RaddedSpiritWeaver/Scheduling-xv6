@@ -395,7 +395,7 @@ scheduler(void)
         p->state = RUNNING;
 
         // ... my code ...
-        // cprintf("process %s with pid %d is now running, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
+        cprintf("process %s with pid %d is now running, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
         // ... ... ...
         
         swtch(&(c->scheduler), p->context);
