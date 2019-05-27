@@ -27,6 +27,7 @@ int uptime(void);
 
 int getppid(void);
 int cps(int);
+int wait_and_performance(int*, int*);
 
 // -------
 

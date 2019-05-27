@@ -33,3 +33,4 @@ SYSCALL(uptime)
 //----- my additions -----
 SYSCALL(getppid)
 SYSCALL(cps)
+SYSCALL(wait_and_performance)

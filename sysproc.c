@@ -113,3 +113,19 @@ int sys_cps(void)
   argint(0, &s); // guess after using this the actual argument gets passed :)
   return cps(s);
 }
+
+int sys_wait_and_performance(void)
+{
+  int *wtime, *rtime;
+
+  // get our arguments from user space
+  // return -1 in case anything goes wrong
+
+  if (argptr(0, (void*)&wtime, sizeof(wtime)) < 0)
+    return -1;
+  if (argptr(1, (void*)&rtime, sizeof(rtime)) < 0)
+    return -1;
+
+  return wait_and_performance(wtime, rtime);
+  // return 1;
+}

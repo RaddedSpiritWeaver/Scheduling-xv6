@@ -23,6 +23,14 @@ void RRSanity()
     int numberOfLoops = 100;
     int pid;
 
+    // arrays to hold the reports
+    int child_ids[numberOfChildern];
+    int wait_times[numberOfChildern];
+    int run_times[numberOfChildern];
+
+    // integers to pass in and get reports
+    int wtime, rtime;
+
     printf(1, "this is the RR sanity test\n");
 
     // create children
@@ -52,7 +60,16 @@ void RRSanity()
     // father now should wait for his childern to exit
     for(int i = 0; i < numberOfChildern; i ++)
     {
-        pid = wait();
+        pid = wait_and_performance(&wtime, &rtime); // pass in the address of ints to get them filled : /
+        child_ids[i] = pid;
+        wait_times[i] = wtime;
+        run_times[i] = rtime;
         printf(1, "FATHER REPORTING: child with id: %d, is done\n", pid);
+    }
+
+    // report:
+    for (int i = 0; i < numberOfChildern; i++)
+    {
+        printf(1, "child report\t id: %d, run time: %d, wait time: %d\n", child_ids[i], run_times[i], wait_times[i]);
     }
 };
