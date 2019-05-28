@@ -34,8 +34,62 @@ struct procLog
 struct procLog log[NPROC];
 
 #ifdef FRR
-int last_proc_id;
-int last_proc_ctime;
+
+// create a queue of pids
+
+int queue[NPROC];
+int head_index = -1;
+int tail_index = -1; 
+
+// if queue_size == 0 then the queue is empty
+int queue_size()
+{
+  if(tail_index >= head_index)
+    return tail_index - head_index;
+  else
+    return NPROC - (head_index - tail_index);
+}
+
+int q_contains(int proc_id)
+{
+  int q_size = queue_size();
+  for(int i = 0; i < q_size; i++)
+  {
+    if(proc_id == queue[(head_index + i) % NPROC]){
+      cprintf("q_contained\n");
+      return 1;
+    }
+  }
+  return -1;
+}
+
+void print_queue()
+{
+  int size = queue_size();
+
+  cprintf("\n");
+  for(int i = 0; i < size; i++)
+    cprintf("<%d> ", queue[(head_index + i) % NPROC]);
+  cprintf("\n");
+}
+
+void push_a_proc(int proc_id) // look for instances where a proc was made runnable and push them to queue insted
+{
+  if(0 < q_contains(proc_id)) // if process exists
+    return;
+  
+  tail_index = (tail_index + 1) % NPROC;
+  queue[tail_index] = proc_id; 
+  print_queue();
+}
+
+int pop_a_proc(void)  // look for a proc state change to running
+{
+  head_index = (head_index + 1) % NPROC;
+  // print_queue();
+  return queue[head_index];
+}
+
 #endif
 
 void
@@ -174,6 +228,10 @@ userinit(void)
 
   p->state = RUNNABLE;
 
+  #ifdef FRR
+    push_a_proc(p->pid);
+  #endif
+
   release(&ptable.lock);
 }
 
@@ -239,6 +297,10 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+
+  #ifdef FRR
+    push_a_proc(np->pid);
+  #endif
 
   release(&ptable.lock);
 
@@ -434,7 +496,7 @@ scheduler(void)
 
     #ifdef RR
     // the defalut of XV6 just and augmented yield
-
+      
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
       {
         if(p->state != RUNNABLE)
@@ -462,24 +524,40 @@ scheduler(void)
     #else // else for RR
       
       #ifdef FRR
-      // check for the first runnable process with ctime less than the one that has just yielded
-      // if not found go for the same proc
+      // FRR is actual RR acording to the slides and stuff since the default RR of XV6
+      // loops thorugh the process table and does not even use a queue
+
+      int this_turn_proc_id;
+
+      this_turn_proc_id = pop_a_proc();
+
+      // loop over proc table to find chosen process
+
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
       {
-        if(p->state != RUNNABLE) // skip those who are not runnable
+        if(p->state != RUNNABLE)
           continue;
+
+        if(p->pid != this_turn_proc_id)
+          continue;
+
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+
+        // ... my code ...
+        // cprintf("process %s with pid %d is now running, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
+        // ... ... ...
         
-        // case finding a runnable process
-        // find a process with smaller ctime than the one that has just yielded
-        if(p->ctime < last_proc_ctime)
-        {
-          c->proc = p;
-          switchuvm(p);
-          p->state = RUNNING;
-          swtch(&(c->scheduler), p->context);
-          switchkvm();
-          c->proc = 0;
-        }
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
       }
 
       #else // else for FRR
@@ -533,8 +611,7 @@ yield(void)
   myproc()->sched_tick_c = 0; // when ever a proc drops its self reset its counter
 
   #ifdef FRR
-  last_proc_id = myproc()->id;
-  last_proc_ctime = myproc()->ctime;
+    push_a_proc(myproc()->pid);
   #endif
   // <end>
   sched();
@@ -611,7 +688,10 @@ wakeup1(void *chan)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan)
+    {
       p->state = RUNNABLE;
+      push_a_proc(p->pid);
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -637,7 +717,10 @@ kill(int pid)
       p->killed = 1;
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
+      {
         p->state = RUNNABLE;
+        push_a_proc(p->pid);
+      }
       release(&ptable.lock);
       return 0;
     }
