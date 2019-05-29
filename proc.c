@@ -56,7 +56,7 @@ int q_contains(int proc_id)
   for(int i = 0; i < q_size; i++)
   {
     if(proc_id == queue[(head_index + i) % NPROC]){
-      cprintf("q_contained\n");
+      // cprintf("q_contained\n");
       return 1;
     }
   }
@@ -82,6 +82,7 @@ void push_a_proc(int proc_id, int print) // look for instances where a proc was 
   if(0 < q_contains(proc_id)) // if process exists
     return;
   
+  // cprintf("pushing\t\t");
   tail_index = (tail_index + 1) % NPROC;
   queue[tail_index] = proc_id;
   if(print > 0)
@@ -90,8 +91,9 @@ void push_a_proc(int proc_id, int print) // look for instances where a proc was 
 
 int pop_a_proc(void)  // look for a proc state change to running
 {
+  // cprintf("poping\t\t");
+  print_queue();
   head_index = (head_index + 1) % NPROC;
-  // print_queue();
   return queue[head_index];
 }
 
@@ -714,17 +716,21 @@ sleep(void *chan, struct spinlock *lk)
 static void
 wakeup1(void *chan)
 {
+  // acquire(&ptable.lock);
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan)
     {
+      // cprintf("alo");
       p->state = RUNNABLE;
       #ifdef FRR
       push_a_proc(p->pid, -1); //!!!!!!!!!!! FOR SOME UNKNOWN REASON IF WE CHOOSE TO PRINT THE QUEUE HERE SOMETHING HAPPENS TO A SPINLOCK NAMED "console"
       // print_queue();    // AND SYSTEM PANICS
       #endif
     }
+  
+  // release(&ptable.lock);
 }
 
 // Wake up all processes sleeping on chan.
@@ -835,7 +841,7 @@ int cps(int options)
   int history = (o % 100000) / 10000;
   int help = o / 100000;
 
-  cprintf("inside CPS\n");
+  // cprintf("inside CPS\n");
   
   // for(int i = 0; i < 6; i++)
   // {
