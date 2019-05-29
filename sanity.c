@@ -20,7 +20,7 @@ int main(int argc, char const *argv[])
 void RRSanity()
 {
     int numberOfChildern = 10;
-    int numberOfLoops = 100;
+    int numberOfLoops = 50;
     int pid;
 
     // arrays to hold the reports
@@ -45,8 +45,9 @@ void RRSanity()
         {
             for(int i2 = 0; i2 < numberOfLoops; i2++)
             {
-                int child_id = getpid();
-                printf(1, "child id: %d is is on: %d\n", child_id, i2);
+                // int child_id = getpid();
+                // printf(1, "child id: %d is is on: %d\n", child_id, i2);
+                sleep(5);
             }
             exit(); // child exits here
         }

@@ -493,7 +493,7 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -531,7 +531,7 @@ scheduler(void)
         p->state = RUNNING;
 
         // ... my code ...
-        // cprintf("process %s with pid %d is now running, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
+        cprintf("process %s with pid %d is now running, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
         // ... ... ...
         
         swtch(&(c->scheduler), p->context);
@@ -592,6 +592,57 @@ scheduler(void)
       }
 
       #else // else for FRR
+
+        #ifdef GRT
+        // seems we have to find a way to bypass the intcode
+
+        struct proc *minP = 0;
+        cprintf("this is minP init:\n");
+        cprintf("process %s with pid %d, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
+        if(minP != 0)
+          cprintf("MINP NOT 0");
+        int min_share = 10000000; // init with a really high value to find the min of shares
+
+        // Loop over process table looking for process to run.
+        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+        {
+          if(p->state != RUNNABLE)
+            continue;
+          else
+          {
+            // calculate the share formola
+            int share = p->rtime / (ticks - p->ctime);
+            if(share < min_share)
+            {
+              min_share = share;
+              minP = p;
+            }
+          }
+        }
+        if(minP != 0) // case a proc was found
+        {
+          
+          cprintf("process %s with pid %d has been chosen, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
+          // Switch to chosen process.  It is the process's job
+          // to release ptable.lock and then reacquire it
+          // before jumping back to us.
+          c->proc = p;
+          switchuvm(p);
+          p->state = RUNNING;
+
+          // ... my code ...
+          // ... ... ...
+          
+          swtch(&(c->scheduler), p->context);
+          switchkvm();
+
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+        }
+        #else
+
+        #endif
 
       #endif // end of FRR
 
