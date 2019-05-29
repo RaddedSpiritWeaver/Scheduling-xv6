@@ -39,7 +39,7 @@ struct procLog log[NPROC];
 
 int queue[NPROC];
 int head_index = -1;
-int tail_index = -1; 
+int tail_index = -1;
 
 // if queue_size == 0 then the queue is empty
 int queue_size()
@@ -67,20 +67,25 @@ void print_queue()
 {
   int size = queue_size();
 
+  // cprintf("here are head, and tail indexes\n");
+  // cprintf("%d\t%d", head_index, tail_index);
+
   cprintf("\n");
   for(int i = 0; i < size; i++)
     cprintf("<%d> ", queue[(head_index + i) % NPROC]);
   cprintf("\n");
 }
 
-void push_a_proc(int proc_id) // look for instances where a proc was made runnable and push them to queue insted
+void push_a_proc(int proc_id, int print) // look for instances where a proc was made runnable and push them to queue insted
 {
+  // for some reason bool is unknown : /
   if(0 < q_contains(proc_id)) // if process exists
     return;
   
   tail_index = (tail_index + 1) % NPROC;
-  queue[tail_index] = proc_id; 
-  print_queue();
+  queue[tail_index] = proc_id;
+  if(print > 0)
+    print_queue();
 }
 
 int pop_a_proc(void)  // look for a proc state change to running
@@ -229,7 +234,8 @@ userinit(void)
   p->state = RUNNABLE;
 
   #ifdef FRR
-    push_a_proc(p->pid);
+    push_a_proc(p->pid, 1);
+    
   #endif
 
   release(&ptable.lock);
@@ -293,13 +299,13 @@ fork(void)
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = np->pid;
-
+  // cprintf("\t\t\t\t\t\t\t\t before fork ACQ");
   acquire(&ptable.lock);
-
+  // cprintf("\t\t\t\tfork could acquire \n");
   np->state = RUNNABLE;
 
   #ifdef FRR
-    push_a_proc(np->pid);
+    push_a_proc(np->pid, 1);
   #endif
 
   release(&ptable.lock);
@@ -490,13 +496,26 @@ scheduler(void)
     // Enable interrupts on this processor.
     sti();
 
-    // Loop over process table looking for process to run.
+    #ifdef FRR // dont know why but for some reason i need this or we will get a dead lock
+      if(tail_index == head_index)
+      {
+        acquire(&ptable.lock);
+        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+        {
+          if(p->state == RUNNABLE)
+            push_a_proc(p->pid, 1);
+        }  
+        release(&ptable.lock);
+      }
+    #endif
+
     // common to all polices
     acquire(&ptable.lock);
 
     #ifdef RR
     // the defalut of XV6 just and augmented yield
       
+      // Loop over process table looking for process to run.
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
       {
         if(p->state != RUNNABLE)
@@ -529,8 +548,18 @@ scheduler(void)
 
       int this_turn_proc_id;
 
-      this_turn_proc_id = pop_a_proc();
 
+      if(tail_index != head_index) // if queue is not empty  
+      {
+        this_turn_proc_id = pop_a_proc();
+        // print_queue
+      }
+      else
+      {
+        // release and continue 
+        release(&ptable.lock);
+        continue;
+      }
       // loop over proc table to find chosen process
 
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
@@ -611,7 +640,8 @@ yield(void)
   myproc()->sched_tick_c = 0; // when ever a proc drops its self reset its counter
 
   #ifdef FRR
-    push_a_proc(myproc()->pid);
+    push_a_proc(myproc()->pid, 1);
+    // print_queue();
   #endif
   // <end>
   sched();
@@ -690,7 +720,10 @@ wakeup1(void *chan)
     if(p->state == SLEEPING && p->chan == chan)
     {
       p->state = RUNNABLE;
-      push_a_proc(p->pid);
+      #ifdef FRR
+      push_a_proc(p->pid, -1); //!!!!!!!!!!! FOR SOME UNKNOWN REASON IF WE CHOOSE TO PRINT THE QUEUE HERE SOMETHING HAPPENS TO A SPINLOCK NAMED "console"
+      // print_queue();    // AND SYSTEM PANICS
+      #endif
     }
 }
 
@@ -719,7 +752,9 @@ kill(int pid)
       if(p->state == SLEEPING)
       {
         p->state = RUNNABLE;
-        push_a_proc(p->pid);
+        #ifdef FRR
+        push_a_proc(p->pid, 1);
+        #endif
       }
       release(&ptable.lock);
       return 0;
@@ -852,6 +887,8 @@ int cps(int options)
   if(help == 1)
   {
     cprintf(" -s for sleeping\n -r for running\n -run for runnable\n -a for all states (defalut option)\n -h history\n --help for help\n");
+
+    // use for additional help and debuging
   }
   
   release(&ptable.lock);

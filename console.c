@@ -112,6 +112,7 @@ panic(char *s)
   cli();
   cons.locking = 0;
   // use lapiccpunum so that we can call panic from mycpu()
+  // cprintf("this panic is being called"); // panic called after adding FRR
   cprintf("lapicid %d: panic: ", lapicid());
   cprintf(s);
   cprintf("\n");

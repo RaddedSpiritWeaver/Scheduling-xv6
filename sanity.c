@@ -60,6 +60,7 @@ void RRSanity()
     // father now should wait for his childern to exit
     for(int i = 0; i < numberOfChildern; i ++)
     {
+        printf(1, "father waiting for ith time: %d", i);
         pid = wait_and_performance(&wtime, &rtime); // pass in the address of ints to get them filled : /
         child_ids[i] = pid;
         wait_times[i] = wtime;
