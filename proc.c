@@ -7,6 +7,7 @@
 #include "proc.h"
 #include "spinlock.h"
 
+// wanted to banch but couldnt
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
