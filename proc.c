@@ -45,6 +45,10 @@ int sched_option = 1; // defalut value. also meaning RR
 int sched_option = 100;
 #endif
 
+#ifdef QQQ
+int sched_option = 1000;
+#endif
+
 // option to separate the bootup from out policies :)
 // guess mostly usefull for FRR
 #ifdef NBF
@@ -140,6 +144,91 @@ int remove(int pid)
 
 #endif
 
+#ifdef QQQ
+
+// create a queue of pids
+
+int queue[NPROC];
+int head_index = -1;
+int tail_index = -1;
+
+// if queue_size == 0 then the queue is empty
+int queue_size()
+{
+  if(tail_index >= head_index)
+    return tail_index - head_index;
+  else
+    return NPROC - (head_index - tail_index);
+}
+
+int q_contains(int proc_id)
+{
+  int q_size = queue_size();
+  for(int i = 0; i < q_size; i++)
+  {
+    if(proc_id == queue[(head_index + i) % NPROC]){
+      // cprintf("q_contained\n");
+      return (head_index + i) % NPROC;
+    }
+  }
+  return -1;
+}
+
+void print_queue()
+{
+  int size = queue_size();
+
+  // cprintf("here are head, and tail indexes\n");
+  // cprintf("%d\t%d", head_index, tail_index);
+
+  cprintf("\n");
+  for(int i = 0; i < size; i++)
+    cprintf("<%d> ", queue[(head_index + i) % NPROC]);
+  cprintf("\n");
+}
+
+void push_a_proc(int proc_id, int print) // look for instances where a proc was made runnable and push them to queue insted
+{
+  // for some reason bool is unknown : /
+  if(0 < q_contains(proc_id)) // if process exists
+    return;
+  
+  // cprintf("pushing\t\t");
+  tail_index = (tail_index + 1) % NPROC;
+  queue[tail_index] = proc_id;
+  if(print > 0)
+    print_queue();
+}
+
+int pop_a_proc(void)  // look for a proc state change to running
+{
+  // cprintf("poping\t\t");
+  print_queue();
+  head_index = (head_index + 1) % NPROC;
+  return queue[head_index];
+}
+
+int remove(int pid)
+{
+  int found_index = q_contains(pid); 
+  if( found_index >= 0)
+  {
+    // for(int i = found_index; i < tail_index; i++)
+    // {
+    //   // queue[]
+    // }
+  }
+  else
+  {
+    cprintf("failed to remove cause not in queue: %d", pid);
+    return -1;
+  }
+  
+  return 1;
+}
+
+#endif
+
 void
 pinit(void)
 {
@@ -212,6 +301,7 @@ found:
   // my code to init the new vaeiables in proc
   p->ctime = ticks;
   p->rtime = 0;
+  p->priority = HIGH;
   p->sched_tick_c = 0;
   // <end>
 
@@ -256,6 +346,7 @@ userinit(void)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
   p->sz = PGSIZE;
+  p->priority = HIGH;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
@@ -333,6 +424,7 @@ fork(void)
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
+  np->priority = curproc->priority;
 
   for(i = 0; i < NOFILE; i++)
     if(curproc->ofile[i])
@@ -386,7 +478,7 @@ exit(void)
   // guess this is where a proc ends !- note the zombie state and stuff
   // my code 
   curproc->etime = ticks;
-  cprintf("closing a process and setting its end time. proc name: %s, proc id: %d, etime: %d \n", curproc->name, curproc->pid, curproc->etime);
+  // cprintf("closing a process and setting its end time. proc name: %s, proc id: %d, etime: %d \n", curproc->name, curproc->pid, curproc->etime);
   // make a log of this program that has finished its work
   l.pid = curproc->pid;
   int c_count;
@@ -451,6 +543,8 @@ wait(void)
         p->etime = 0;
         p->rtime = 0;
         p->ctime = 0;
+        // reset to low
+        p->priority = LOW;
         release(&ptable.lock);
         return pid;
       }
@@ -503,6 +597,8 @@ int wait_and_performance(int *wtime, int *rtime)
         p->etime = 0;
         p->rtime = 0;
         p->ctime = 0;
+        // reset to low
+        p->priority = LOW;
         release(&ptable.lock);
         return pid;
       }
@@ -657,10 +753,30 @@ void GRT_policy(struct proc *p, struct cpu *c)
     c->proc = 0;
   }
   #endif
+
   // if nothing was defined just return :) or just by reaching the end
   return;
 }
 
+
+int check_high_p_exists(void)
+{
+  struct proc *p;
+
+  // we have acquired the ptalbe lock before calling this
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->state != RUNNABLE)
+      continue;
+    
+    if(p->priority == HIGH)
+    {
+      cprintf("this has a high pri %d, %s\n", p->pid, stringFromPriority(p->priority));
+      return 1;
+    }
+  }
+  return -1;
+}
 
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
@@ -673,7 +789,7 @@ void GRT_policy(struct proc *p, struct cpu *c)
 void
 scheduler(void)
 {
-  struct proc *p;
+  struct proc *p = 0;
   struct cpu *c = mycpu();
   c->proc = 0;
 
@@ -689,7 +805,24 @@ scheduler(void)
         for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
         {
           if(p->state == RUNNABLE)
+          {
             push_a_proc(p->pid, 1);
+          }
+        }  
+        release(&ptable.lock);
+      }
+    #endif
+
+    #ifdef QQQ
+      if(tail_index == head_index)
+      {
+        acquire(&ptable.lock);
+        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+        {
+          if(p->state == RUNNABLE && p->priority == MID)
+          {
+            push_a_proc(p->pid, 1);
+          }
         }  
         release(&ptable.lock);
       }
@@ -741,6 +874,97 @@ scheduler(void)
 
       case 100:
         GRT_policy(p, c);
+      break;
+
+      case 1000:
+      // i fear that some dont change their priorty and we get stuck
+
+      // check if there is any process with high priority
+      if(check_high_p_exists() >= 0)
+      {
+        //todo: make it cleaner
+        //for now its just a copy of GRT 
+        struct proc *minP = 0;
+        int min_share = 10000000;
+
+        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+        {
+          // check if priority is high
+          if(p->state == RUNNABLE && p->priority == HIGH)
+            if(minP != 0)
+            {
+              int divide_to = ticks - p->ctime;
+              int share = 1000000000; 
+              if(0 != divide_to)
+                share = p->rtime / divide_to;
+              if(share < min_share)
+              {
+                min_share = share;
+                minP = p;
+              }
+            }
+            else
+              minP = p;
+          else
+          {
+            continue;
+          }
+        }
+        if(minP != 0)
+        {
+          p = minP;
+          
+          c->proc = p;
+          switchuvm(p);
+          p->state = RUNNING;
+
+          swtch(&(c->scheduler), p->context);
+          switchkvm();
+
+          c->proc = 0;
+        }
+      }
+      else if (head_index != tail_index)
+      {
+        int this_turn_proc_id = pop_a_proc();
+
+        // loop over proc table to find chosen process
+
+        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+        {
+          if(p->state != RUNNABLE)
+            continue;
+
+          if(p->pid != this_turn_proc_id)
+            continue;
+
+          c->proc = p;
+          switchuvm(p);
+          p->state = RUNNING;
+          
+          swtch(&(c->scheduler), p->context);
+          switchkvm();
+
+          c->proc = 0;
+        }
+      }
+      else
+      {
+        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+        {
+          if(p->state != RUNNABLE)
+            continue;
+
+          c->proc = p;
+          switchuvm(p);
+          p->state = RUNNING;
+
+          swtch(&(c->scheduler), p->context);
+          switchkvm();
+
+          c->proc = 0;
+        }
+      }
       break;
 
       default:
@@ -795,6 +1019,10 @@ yield(void)
   #ifdef FRR
     push_a_proc(myproc()->pid, 1);
     // print_queue();
+  #endif
+  #ifdef QQQ
+    if(myproc()->priority == MID)
+      push_a_proc(myproc()->pid, 1);
   #endif
   // <end>
   sched();
@@ -878,6 +1106,10 @@ wakeup1(void *chan)
       #ifdef FRR
       push_a_proc(p->pid, -1); //!!!!!!!!!!! FOR SOME UNKNOWN REASON IF WE CHOOSE TO PRINT THE QUEUE HERE SOMETHING HAPPENS TO A SPINLOCK NAMED "console"
       // print_queue();    // AND SYSTEM PANICS
+      #endif
+      #ifdef QQQ
+      if(p->priority == MID)
+        push_a_proc(p->pid, -1);
       #endif
     }
   
@@ -1091,7 +1323,7 @@ int nice(int proc_id)
     if(p->priority == HIGH)
     {
       p->priority = MID;
-      push_a_proc(p->pid);
+      push_a_proc(p->pid, 0);
     }
   }
   else

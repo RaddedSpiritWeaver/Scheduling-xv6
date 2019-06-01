@@ -42,6 +42,12 @@ static inline char *stringFromState(enum procstate p){
   return strings[p];
 }
 
+static inline char *stringFromPriority(enum proc_priority p){
+  
+  static char *strings[] = { "HIGH", "MID", "LOW" };
+  return strings[p];
+}
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
