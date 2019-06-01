@@ -34,15 +34,30 @@ struct procLog
 // array to create a log of the last 64 processes completed - based of their pid
 struct procLog log[NPROC];
 
+// changing my style to use this instead of a big scheduler functiond with lots of ifdefs
+// int sched_option = 0;
+
 #ifdef RR
-int RR_defined = 1;
+int sched_option = 1; // defalut value. also meaning RR
+#endif
+
+#ifdef GRT
+int sched_option = 100;
+#endif
+
+// option to separate the bootup from out policies :)
+// guess mostly usefull for FRR
+#ifdef NBF
+int boot_first = 0;
 #else
-int RR_defined = 0;
+int boot_first = 1;
 #endif
 
 #ifdef FRR
 
 // create a queue of pids
+
+int sched_option = 10;
 
 int queue[NPROC];
 int head_index = -1;
@@ -486,6 +501,148 @@ int wait_and_performance(int *wtime, int *rtime)
 
 }
 
+void RR_policy(struct proc *p, struct cpu *c)
+{
+  // the defalut of XV6 just and augmented yield and used for RR
+      
+  // Loop over process table looking for process to run.
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->state != RUNNABLE)
+      continue;
+
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    c->proc = p;
+    switchuvm(p);
+    p->state = RUNNING;
+
+    // ... my code ...
+    // cprintf("bootup process %s with pid %d is now running\n", p->name, p->pid);
+    // ... ... ...
+    
+    swtch(&(c->scheduler), p->context);
+    switchkvm();
+
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
+  }
+}
+
+
+void FRR_policy(struct proc *p, struct cpu *c)
+{
+  #ifdef FRR
+  // FRR is actual RR acording to the slides and stuff since the default RR of XV6
+  // loops thorugh the process table and does not even use a queue
+
+  int this_turn_proc_id;
+
+
+  if(tail_index != head_index) // if queue is not empty  
+  {
+    this_turn_proc_id = pop_a_proc();
+    // print_queue
+  }
+  else
+  { 
+    return;
+  }
+  // loop over proc table to find chosen process
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->state != RUNNABLE)
+      continue;
+
+    if(p->pid != this_turn_proc_id)
+      continue;
+
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    c->proc = p;
+    switchuvm(p);
+    p->state = RUNNING;
+
+    // ... my code ...
+    // cprintf("process %s with pid %d is now running, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
+    // ... ... ...
+    
+    swtch(&(c->scheduler), p->context);
+    switchkvm();
+
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
+  }
+  #endif
+  // if nothing was defined just return :)
+  return;
+}
+
+void GRT_policy(struct proc *p, struct cpu *c)
+{
+  #ifdef GRT
+
+  struct proc *minP = 0;
+  int min_share = 10000000; // init with a really high value to find the min of shares
+
+  // Loop over process table looking for process to run.
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->state == RUNNABLE)
+      if(minP != 0)
+      {
+        // calculate the share formola
+        int divide_to = ticks - p->ctime;
+        int share = 1000000000; 
+        if(0 != divide_to) // handle division by zero :)
+          share = p->rtime / divide_to;
+        if(share < min_share)
+        {
+          min_share = share;
+          minP = p;
+        }
+      }
+      else
+        minP = p;
+    else
+    {
+      continue;
+    }
+  }
+  if(minP != 0) // case a proc was found
+  {
+    p = minP; // dont forget this :)
+    
+    // cprintf("process %s with pid %d has been chosen, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
+    
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    c->proc = p;
+    switchuvm(p);
+    p->state = RUNNING;
+
+    // ... my code ...
+    // ... ... ...
+    
+    swtch(&(c->scheduler), p->context);
+    switchkvm();
+
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
+  }
+  #endif
+  // if nothing was defined just return :) or just by reaching the end
+  return;
+}
+
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -521,10 +678,10 @@ scheduler(void)
 
     // common to all polices
     acquire(&ptable.lock);
-
-    if(nextpid < -1 || RR_defined == 1)
+    // < 4 or <= 3 these are the magic numbers :)
+    if(nextpid < 4 && boot_first == 1)
     {
-      // the defalut of XV6 just and augmented yield
+      // the defalut of XV6 just and augmented yield and used for RR
       
       // Loop over process table looking for process to run.
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
@@ -540,7 +697,7 @@ scheduler(void)
         p->state = RUNNING;
 
         // ... my code ...
-        cprintf("process %s with pid %d is now running, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
+        cprintf("bootup process %s with pid %d is now running\n", p->name, p->pid);
         // ... ... ...
         
         swtch(&(c->scheduler), p->context);
@@ -550,125 +707,26 @@ scheduler(void)
         // It should have changed its p->state before coming back.
         c->proc = 0;
       }
-
     }
     else
     {
-      #ifdef RR
-    
-      #else // else for RR
-        
-        #ifdef FRR
-        // FRR is actual RR acording to the slides and stuff since the default RR of XV6
-        // loops thorugh the process table and does not even use a queue
+      switch (sched_option)
+      {
+      case 1: // RR
+        RR_policy(p, c);
+      break;
 
-        int this_turn_proc_id;
+      case 10:
+        FRR_policy(p, c);
+      break;
 
+      case 100:
+        GRT_policy(p, c);
+      break;
 
-        if(tail_index != head_index) // if queue is not empty  
-        {
-          this_turn_proc_id = pop_a_proc();
-          // print_queue
-        }
-        else
-        {
-          // release and continue 
-          release(&ptable.lock);
-          continue;
-        }
-        // loop over proc table to find chosen process
-
-        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-        {
-          if(p->state != RUNNABLE)
-            continue;
-
-          if(p->pid != this_turn_proc_id)
-            continue;
-
-          // Switch to chosen process.  It is the process's job
-          // to release ptable.lock and then reacquire it
-          // before jumping back to us.
-          c->proc = p;
-          switchuvm(p);
-          p->state = RUNNING;
-
-          // ... my code ...
-          // cprintf("process %s with pid %d is now running, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
-          // ... ... ...
-          
-          swtch(&(c->scheduler), p->context);
-          switchkvm();
-
-          // Process is done running for now.
-          // It should have changed its p->state before coming back.
-          c->proc = 0;
-        }
-
-        #else // else for FRR
-
-          #ifdef GRT
-          // seems we have to find a way to bypass the intcode
-
-          struct proc *minP = 0;
-          // cprintf("this is minP init:\n");
-          // cprintf("process %s with pid %d, ctime: %d, rtime: %d \n", minP->name, minP->pid, minP->ctime, minP->rtime);
-          if(minP != 0)
-            cprintf("MINP NOT 0");
-          int min_share = 10000000; // init with a really high value to find the min of shares
-
-          // Loop over process table looking for process to run.
-          for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-          {
-            if(p->state == RUNNABLE)
-              if(minP != 0)
-              {
-                // calculate the share formola
-                int divide_to = ticks - p->ctime;
-                int share = 1000000000; 
-                if(0 != divide_to) // handle division by zero :)
-                  share = p->rtime / divide_to;
-                if(share < min_share)
-                {
-                  min_share = share;
-                  minP = p;
-                }
-              }
-              else
-                minP = p;
-            else
-            {
-              continue;
-            }
-          }
-          if(minP != 0) // case a proc was found
-          {
-            p = minP; // dont forget this :)
-            cprintf("process %s with pid %d has been chosen, ctime: %d, rtime: %d \n", p->name, p->pid, p->ctime, p->rtime);
-            // Switch to chosen process.  It is the process's job
-            // to release ptable.lock and then reacquire it
-            // before jumping back to us.
-            c->proc = p;
-            switchuvm(p);
-            p->state = RUNNING;
-
-            // ... my code ...
-            // ... ... ...
-            
-            swtch(&(c->scheduler), p->context);
-            switchkvm();
-
-            // Process is done running for now.
-            // It should have changed its p->state before coming back.
-            c->proc = 0;
-          }
-          #else
-
-          #endif
-
-        #endif // end of FRR
-
-      #endif // end of RR   
+      default:
+      break;
+      }
     }
 
     // always release the lock
