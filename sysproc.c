@@ -129,3 +129,8 @@ int sys_wait_and_performance(void)
   return wait_and_performance(wtime, rtime);
   // return 1;
 }
+
+int sys_nice()
+{
+  return nice(myproc()->pid);
+}

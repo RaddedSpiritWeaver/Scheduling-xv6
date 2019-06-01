@@ -107,6 +107,7 @@ extern int sys_uptime(void);
 extern int sys_getppid(void); // my addition
 extern int sys_cps(void); // addition for prj2
 extern int sys_wait_and_performance(void);
+extern int sys_nice(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -133,6 +134,7 @@ static int (*syscalls[])(void) = {
 [SYS_getppid] sys_getppid, // my addition
 [SYS_cps]     sys_cps, // my addition for prj 2
 [SYS_wait_and_performance]  sys_wait_and_performance, // new implementation of wait for prj 2
+[SYS_nice] sys_nice,
 };
 
 void

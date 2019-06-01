@@ -79,7 +79,7 @@ int q_contains(int proc_id)
   {
     if(proc_id == queue[(head_index + i) % NPROC]){
       // cprintf("q_contained\n");
-      return 1;
+      return (head_index + i) % NPROC];
     }
   }
   return -1;
@@ -117,6 +117,25 @@ int pop_a_proc(void)  // look for a proc state change to running
   print_queue();
   head_index = (head_index + 1) % NPROC;
   return queue[head_index];
+}
+
+int remove(int pid)
+{
+  int found_index = q_contains(pid); 
+  if( found_index >= 0)
+  {
+    for(int i = found_index; i < tail_index; i++)
+    {
+      queue[]
+    }
+  }
+  else
+  {
+    cprintf("failed to remove cause not in queue: %d", pid);
+    return -1;
+  }
+  
+  return 1
 }
 
 #endif
@@ -1041,4 +1060,46 @@ int increment_sched_tickcounter()
   returnMe = ++myproc()->sched_tick_c;
   release(&ptable.lock);
   return returnMe;
+}
+
+int nice(int proc_id)
+{
+  struct proc *p;
+  int found = 0;
+  // need the key since we are changing proc priorities
+  acquire(&ptable.lock);
+  // find the process
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->state == UNUSED)
+      continue;
+    if(p->pid == proc_id)
+    {
+      found = 1;
+      break; // found the proc
+    }
+  }
+  if(found == 1)
+  {
+    if(p->priority == LOW)
+      cprintf("priority is at its lowest for pid: %d", p->pid);
+    if(p->priority == MID) // just gonna handle it later. when i pop it ill ignore the removed ones (aka not priority 2)
+    {
+      // simply change it to low and leave the stupid queueing and shit
+      p->priority = LOW;
+    }
+    if(p->priority == HIGH)
+    {
+      p->priority = MID;
+      push_a_proc(p->pid);
+    }
+  }
+  else
+  {
+   cprintf("pid not found: %d", proc_id); 
+   release(&ptable.lock);
+   return 0;
+  }
+  release(&ptable.lock);
+  return 1;
 }

@@ -33,6 +33,7 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum proc_priority { HIGH, MID, LOW};
 
 // function to conver enum names to strings - for debugging
 static inline char *stringFromState(enum procstate p){
@@ -61,6 +62,7 @@ struct proc {
   int rtime;                   // the run time of the process
   int etime;                   // end time of the process
   int sched_tick_c;            // to handle timesliceing :) -> turns 0 when yeilding ?? guess i could have even used runtime with a mod
+  enum proc_priority priority;
 };
 
 // Process memory is laid out contiguously, low addresses first:
