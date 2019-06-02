@@ -1243,24 +1243,24 @@ int cps(int options)
 
   if(sleeping || running || runable)
   {
-    cprintf("name \t pid \t state \t\t ctime \t rtime \t etime \n");
+    cprintf("name \t pid \t state \t\t ctime \t rtime \t etime \t Priority \n");
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
       if ( p->state == SLEEPING && sleeping == 1 )
-        cprintf("%s \t %d  \t %s \t %d \t %d \t %d \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime );
+        cprintf("%s \t %d  \t %s \t %d \t %d \t %d \t %s \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime, p->priority );
       if ( p->state == RUNNING && running == 1 )
-        cprintf("%s \t %d  \t %s \t %d \t %d \t %d \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime );
+        cprintf("%s \t %d  \t %s \t %d \t %d \t %d \t %s \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime, p->priority );
       if ( p->state == RUNNABLE && runable == 1 )
-        cprintf("%s \t %d  \t %s \t %d \t %d \t %d \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime );
+        cprintf("%s \t %d  \t %s \t %d \t %d \t %d \t %s \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime, p->priority );
     }
   }
     
   if(all == 1)
   {
-    cprintf("name \t pid \t state \t\t ctime \t rtime \t etime \n");
+    cprintf("name \t pid \t state \t\t ctime \t rtime \t etime \t Priority \n");
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
-      cprintf("%s \t %d  \t %s \t %d \t %d \t %d \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime );
+      cprintf("%s \t %d  \t %s \t %d \t %d \t %d \n", p->name, p->pid, stringFromState(p->state), p->ctime, p->rtime, p->etime, p->priority );
     }
   }
   
