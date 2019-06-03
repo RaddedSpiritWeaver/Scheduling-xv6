@@ -83,7 +83,7 @@ int q_contains(int proc_id)
   {
     if(proc_id == queue[(head_index + i) % NPROC]){
       // cprintf("q_contained\n");
-      return (head_index + i) % NPROC];
+      return (head_index + i) % NPROC;
     }
   }
   return -1;
@@ -125,21 +125,21 @@ int pop_a_proc(void)  // look for a proc state change to running
 
 int remove(int pid)
 {
-  int found_index = q_contains(pid); 
-  if( found_index >= 0)
-  {
-    for(int i = found_index; i < tail_index; i++)
-    {
-      queue[]
-    }
-  }
-  else
-  {
-    cprintf("failed to remove cause not in queue: %d", pid);
-    return -1;
-  }
+  // int found_index = q_contains(pid); 
+  // if( found_index >= 0)
+  // {
+  //   for(int i = found_index; i < tail_index; i++)
+  //   {
+  //     queue[]
+  //   }
+  // }
+  // else
+  // {
+  //   cprintf("failed to remove cause not in queue: %d", pid);
+  //   return -1;
+  // }
   
-  return 1
+  return 1;
 }
 
 #endif
@@ -878,7 +878,7 @@ scheduler(void)
 
       case 1000:
       // i fear that some dont change their priorty and we get stuck
-
+      #ifdef QQQ
       // check if there is any process with high priority
       if(check_high_p_exists() >= 0)
       {
@@ -965,6 +965,7 @@ scheduler(void)
           c->proc = 0;
         }
       }
+      #endif
       break;
 
       default:
@@ -1296,6 +1297,9 @@ int increment_sched_tickcounter()
 
 int nice(int proc_id)
 {
+  
+  #ifdef QQQ
+
   struct proc *p;
   int found = 0;
   // need the key since we are changing proc priorities
@@ -1314,7 +1318,7 @@ int nice(int proc_id)
   if(found == 1)
   {
     if(p->priority == LOW)
-      cprintf("priority is at its lowest for pid: %d", p->pid);
+      cprintf("priority is at its lowest for pid: %d\n", p->pid);
     if(p->priority == MID) // just gonna handle it later. when i pop it ill ignore the removed ones (aka not priority 2)
     {
       // simply change it to low and leave the stupid queueing and shit
@@ -1328,10 +1332,13 @@ int nice(int proc_id)
   }
   else
   {
-   cprintf("pid not found: %d", proc_id); 
+   cprintf("pid not found: %d\n", proc_id); 
    release(&ptable.lock);
    return 0;
   }
   release(&ptable.lock);
+  return 1;
+
+  #endif
   return 1;
 }

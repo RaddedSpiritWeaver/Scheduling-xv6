@@ -3,6 +3,8 @@
 
 // just the definitions
 void RRSanity();
+void FRRSanity();
+void GRTSanity();
 void QQQSanity();
 
 int main(int argc, char const *argv[])
@@ -10,8 +12,43 @@ int main(int argc, char const *argv[])
     
     //todo : add the argument processing for different sanity runs
 
-    QQQSanity();
-
+    if(argc > 1)
+    {
+        for(int i = 0; i < argc; i++) // process arguments
+        {
+            if(0 == strcmp(argv[i], "-3Q"))
+                QQQSanity();
+            if(0 == strcmp(argv[i], "-RR"))
+                RRSanity();
+            if(0 == strcmp(argv[i], "-FRR"))
+                FRRSanity();
+            if(0 == strcmp(argv[i], "-GRT"))
+                GRTSanity();
+            if(0 == strcmp(argv[i], "-ALL"))
+            {
+                RRSanity();
+                FRRSanity();
+                GRTSanity();
+                QQQSanity();
+            }
+            if(0 == strcmp(argv[i], "--help"))
+            {
+                printf(1, "this is command is used for all sanity tests\n");
+                printf(1, "-RR for Round Rubin and XV6 defualt policy\n");
+                printf(1, "-FRR for FIFO Round Rubin test\n");
+                printf(1, "-GRT for Fair Share test \n");
+                printf(1, "-3Q for the Multi-level Queue test\n");
+                printf(1, "-ALL to run all tests in the same order as stated above\n");
+            }
+                
+            
+        }
+    }
+    else // set defult to QQQ sanity test
+    {
+        QQQSanity();
+    }
+    
     exit(); // father of all in all cases will exit here 
     return 0;
 }
@@ -21,7 +58,7 @@ int main(int argc, char const *argv[])
 void RRSanity()
 {
     int numberOfChildern = 10;
-    int numberOfLoops = 50;
+    int numberOfLoops = 1000;
     int pid;
 
     // arrays to hold the reports
@@ -46,9 +83,8 @@ void RRSanity()
         {
             for(int i2 = 0; i2 < numberOfLoops; i2++)
             {
-                // int child_id = getpid();
-                // printf(1, "child id: %d is is on: %d\n", child_id, i2);
-                sleep(5);
+                int child_id = getpid();
+                printf(1, "child id: %d is is on: %d\n", child_id, i2);
             }
             exit(); // child exits here
         }
@@ -67,7 +103,7 @@ void RRSanity()
         child_ids[i] = pid;
         wait_times[i] = wtime;
         run_times[i] = rtime;
-        printf(1, "FATHER REPORTING: child with id: %d, is done\n", pid);
+        // printf(1, "FATHER REPORTING: child with id: %d, is done\n", pid);
     }
 
     // report:
@@ -77,6 +113,96 @@ void RRSanity()
     }
 };
 
+void FRRSanity()
+{
+    int numberOfChildern = 10;
+    int numberOfLoops = 1000;
+    int pid;
+
+    int dummy = 100; // usd to consume some cpu time
+
+    // arrays to hold the reports
+    int child_ids[numberOfChildern];
+    int wait_times[numberOfChildern];
+    int run_times[numberOfChildern];
+
+    // integers to pass in and get reports
+    int wtime, rtime;
+
+    printf(1, "FRR sanity test is running\n");
+
+    for(int i = 0; i < numberOfChildern; i ++)
+    {
+        pid = fork(); // create a child
+
+        if(pid > 0)
+        {
+            // father process should continue and make more children
+            continue;
+        }
+        else if(pid == 0) // children
+        {
+            for(int count = 0; count < numberOfLoops; count++) // some computation time
+            {
+                sleep(5);
+                dummy ++;
+            }
+            exit();
+        }
+        else // error in forking
+        {
+            printf(1, "!!!!! for some reason there was a fork ERROR !!!!!\n");
+            exit(); // exit father in case of fork error
+        }
+    }
+    
+    // father now should wait for his childern to exit
+    for(int i = 0; i < numberOfChildern; i ++)
+    {
+        pid = wait_and_performance(&wtime, &rtime); // pass in the address of ints to get them filled : /
+        child_ids[i] = pid;
+        wait_times[i] = wtime;
+        run_times[i] = rtime;
+    }
+
+    // report:
+    for (int i = 0; i < numberOfChildern; i++)
+    {
+        printf(1, "child report\t id: %d, run time: %d, wait time: %d\n", child_ids[i], run_times[i], wait_times[i]);
+    }
+
+}
+
+void GRTSanity()
+{
+    int numberOfLoops = 5;
+    int sleepTime = 1000; // mesured in CPU ticks
+    int pid;
+
+    printf(1, "GRT sanity test is running\n");
+
+    printf(1, "father pid is: <%d>\n", getpid()); // get pid of this process ( the father )
+
+    pid = fork(); // create a child
+    if(pid > 0) // parent should sleep first then start its loop
+        sleep(sleepTime);
+    for(int i = 0; i < numberOfLoops; i++ ) // parent and child should execute the same code 
+    {
+        printf(1, "Process <%d> is printing i: %d\n", getpid(), (i + 1));
+        sleep(sleepTime);
+    }
+    if(pid > 0)
+    {
+        // father needs to eventually wait for its child
+        printf(1, "father is done now waiting for child\n");
+        pid = wait();
+        printf(1, "child <%d> is done\n", pid);
+    }
+    else
+        exit(); // child should exit 
+}
+
+//todo: comp it, needs reportings i think
 void QQQSanity()
 {
     int numberOfChildern = 30;
