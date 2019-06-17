@@ -211,6 +211,13 @@ void QQQSanity()
 
     int wtime, rtime;
 
+    //array to gather info for report
+    int all_wait_time[numberOfChildern];
+    int all_run_time[numberOfChildern];
+    int all_child_ids[numberOfChildern];
+
+    int father_pid = getpid();
+
     for(int i = 0; i < numberOfChildern; i ++)
     {
         pid = fork();
@@ -245,11 +252,46 @@ void QQQSanity()
     // father now should wait for his childern to exit
     for(int i = 0; i < numberOfChildern; i ++)
     {
-        // printf(1, "father waiting for ith time: %d", i);
         pid = wait_and_performance(&wtime, &rtime); // pass in the address of ints to get them filled : /
-        // child_ids[i] = pid;
-        // wait_times[i] = wtime;
-        // run_times[i] = rtime;
-        printf(1, "FATHER REPORTING: child with id: %d, is done\n", pid);
+        all_child_ids[i] = pid;
+        all_run_time[i] = rtime;
+        all_wait_time[i] = wtime;
+    }
+    // generate the report
+    
+    // average run and wait time for all children
+    int sum_run = 0;
+    int sum_wait = 0;
+    for(int i =0; i < numberOfChildern; i++)
+    {
+        sum_run = sum_run + all_run_time[i];
+        sum_wait = sum_wait + all_wait_time[i];
+    }
+    printf(1,"average run time for all children: %d", sum_run / numberOfChildern);
+    printf(1,"average wait time for all children: %d", sum_wait / numberOfChildern);
+    // average wait and run time for each queue
+    
+    char* strings[3] = {"RR", "FRR", "GRT"};
+
+    for(int j = 0; j < 3; j++)
+    {
+        sum_run = 0;
+        sum_wait = 0;
+        for(int i = 0; i < numberOfChildern; i ++)
+        {
+            int child_id = all_child_ids[i];
+            if(j = (child_id - father_pid - 1) % 3)
+            {
+                sum_run = sum_run + all_run_time[i];
+                sum_wait = sum_wait + all_wait_time[i];
+            }
+        }
+        printf(1, "average run time for %s : %d", *strings[2 - j], sum_run / 10);
+        printf(1, "average wait time for %s : %d", *strings[2 - j], sum_wait / 10);
+    }
+    // run and wait time for all children
+    for(int i = 0; i < numberOfChildern; i++)
+    {
+        printf(1, "child report \t id: %d, run: %d, wait: %d", all_child_ids[i], all_run_time[i], all_wait_time[i]);
     }
 }
